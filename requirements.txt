@@ -2,3 +2,7 @@ streamlit
 pdfplumber
 pandas
 xlsxwriter
+easyocr
+opencv-python-headless
+numpy
+Pillow
