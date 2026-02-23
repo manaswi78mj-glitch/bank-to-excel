@@ -7,7 +7,7 @@ import os
 # --- PROFESSIONAL THEME SETUP ---
 st.set_page_config(page_title="BankStat to Excel", layout="centered", page_icon="🏦")
 
-# Enhanced CSS to force visibility of Disclaimer and Security sections
+# Enhanced CSS to force visibility and professional styling
 st.markdown("""
     <style>
     .stApp {
@@ -100,11 +100,24 @@ else:
                             all_rows.append(df_page)
 
                 if all_rows:
+                    # Combine all pages
                     final_df = pd.concat(all_rows, ignore_index=True)
+                    
+                    # --- NEW CLEANING LOGIC START ---
+                    # 1. Drop completely empty rows and columns
+                    final_df = final_df.dropna(how='all', axis=0).dropna(how='all', axis=1)
+                    
+                    # 2. Set the first row as headers
                     final_df.columns = final_df.iloc[0]
-                    final_df = final_df[1:].dropna(how='all')
+                    final_df = final_df[1:]
+                    
+                    # 3. REMOVE REPEATING HEADERS (The fix for your issue)
+                    # This looks at the first column and removes rows that repeat the header name
+                    header_label = str(final_df.columns[0])
+                    final_df = final_df[final_df.iloc[:, 0].astype(str) != header_label]
+                    # --- NEW CLEANING LOGIC END ---
 
-                    st.subheader("Data Preview")
+                    st.subheader("📊 Data Preview")
                     st.dataframe(final_df, use_container_width=True)
 
                     output = BytesIO()
