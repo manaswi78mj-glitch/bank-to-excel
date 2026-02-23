@@ -7,39 +7,13 @@ import os
 # --- PROFESSIONAL THEME SETUP ---
 st.set_page_config(page_title="BankStat to Excel", layout="centered", page_icon="🏦")
 
-# Enhanced CSS to force visibility and professional styling
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #FFFFFF !important;
-        color: #333333 !important;
-    }
-    [data-testid="stSidebar"] {
-        background-color: #f8f9fa !important;
-        border-right: 1px solid #dee2e6;
-    }
-    .stButton>button {
-        background-color: #0056b3 !important;
-        color: white !important;
-        border-radius: 8px;
-        font-weight: bold;
-        width: 100%;
-    }
-    .main-header {
-        color: #0056b3;
-        font-size: 32px;
-        font-weight: 700;
-        text-align: center;
-    }
-    /* Disclaimer Box Styling */
-    .disclaimer-box {
-        background-color: #fff9db;
-        border: 1px solid #f59f00;
-        padding: 15px;
-        border-radius: 8px;
-        color: #333333;
-        margin-top: 30px;
-    }
+    .stApp { background-color: #FFFFFF !important; color: #333333 !important; }
+    [data-testid="stSidebar"] { background-color: #f8f9fa !important; border-right: 1px solid #dee2e6; }
+    .stButton>button { background-color: #0056b3 !important; color: white !important; border-radius: 8px; font-weight: bold; width: 100%; }
+    .main-header { color: #0056b3; font-size: 32px; font-weight: 700; text-align: center; }
+    .disclaimer-box { background-color: #fff9db; border: 1px solid #f59f00; padding: 15px; border-radius: 8px; color: #333333; margin-top: 30px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -50,7 +24,6 @@ if "authenticated" not in st.session_state:
 def login():
     if os.path.exists("logo.png"):
         st.image("logo.png", width=120)
-    
     st.markdown("<p class='main-header'>BankStat to Excel</p>", unsafe_allow_html=True)
     st.write("<p style='text-align: center; color: #6c757d;'>Secure Professional Converter</p>", unsafe_allow_html=True)
     
@@ -83,8 +56,7 @@ else:
         st.header("Settings")
         pdf_pass = st.text_input("PDF Password (if any)", type="password")
         st.divider()
-        st.markdown("**Developer Contact:**")
-        st.write("For support, contact your Administrator.")
+        st.write("🔒 **Privacy:** Data is processed in-memory and never stored.")
 
     uploaded_file = st.file_uploader("Upload Bank Statement (Digital PDF)", type="pdf")
 
@@ -92,30 +64,32 @@ else:
         try:
             with pdfplumber.open(uploaded_file, password=pdf_pass) as pdf:
                 all_rows = []
-                with st.spinner('Converting...'):
+                with st.spinner('Extracting data...'):
                     for page in pdf.pages:
-                        table = page.extract_table()
+                        # Improved table settings for borderless e-statements
+                        table = page.extract_table({
+                            "vertical_strategy": "text", 
+                            "horizontal_strategy": "text"
+                        })
                         if table:
-                            df_page = pd.DataFrame(table)
-                            all_rows.append(df_page)
+                            all_rows.append(pd.DataFrame(table))
 
                 if all_rows:
-                    # Combine all pages
                     final_df = pd.concat(all_rows, ignore_index=True)
                     
-                    # --- NEW CLEANING LOGIC START ---
-                    # 1. Drop completely empty rows and columns
-                    final_df = final_df.dropna(how='all', axis=0).dropna(how='all', axis=1)
+                    # 1. Remove rows that are completely empty
+                    final_df = final_df.dropna(how='all')
                     
-                    # 2. Set the first row as headers
+                    # 2. Set headers and filter repeating ones
                     final_df.columns = final_df.iloc[0]
                     final_df = final_df[1:]
                     
-                    # 3. REMOVE REPEATING HEADERS (The fix for your issue)
-                    # This looks at the first column and removes rows that repeat the header name
-                    header_label = str(final_df.columns[0])
-                    final_df = final_df[final_df.iloc[:, 0].astype(str) != header_label]
-                    # --- NEW CLEANING LOGIC END ---
+                    # Filter out rows that repeat header text (e.g., "Particulars")
+                    header_text = str(final_df.columns[0])
+                    final_df = final_df[final_df.iloc[:, 0].astype(str) != header_text]
+                    
+                    # 3. Final drop for any remaining null rows
+                    final_df = final_df.dropna(subset=[final_df.columns[0]])
 
                     st.subheader("📊 Data Preview")
                     st.dataframe(final_df, use_container_width=True)
@@ -127,24 +101,22 @@ else:
                     st.download_button(
                         label="📥 Download Excel File",
                         data=output.getvalue(),
-                        file_name="Bank_Statement_Converted.xlsx",
+                        file_name="Converted_Statement.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+                else:
+                    st.warning("No tabular data found. Is this a scanned image instead of a digital PDF?")
         except Exception as e:
-            st.error("Error: Verification failed. Check password or file format.")
+            st.error(f"Error: {str(e)}")
 
-    # --- DISCLAIMER AND OWNER SECURITY SECTION ---
+    # --- DISCLAIMER SECTION ---
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
         <div class='disclaimer-box'>
             <strong>⚖️ Disclaimer & Security Notice</strong><br>
             <ul>
-                <li><strong>Privacy:</strong> This tool is built by <strong>Manaswi</strong> for CA professionals. We do not store, log, or share your financial data.</li>
-                <li><strong>Encryption:</strong> All files are processed in-memory. Once the session is closed, all data is permanently wiped.</li>
-                <li><strong>Accuracy:</strong> While we aim for 100% accuracy, users are advised to cross-verify the Excel output with the original statement.</li>
-                <li><strong>Owner Security:</strong> This portal is protected by access keys to prevent unauthorized usage.</li>
+                <li><strong>Privacy:</strong> Built by <strong>Manaswi</strong> for CA professionals.</li>
+                <li><strong>Owner Security:</strong> Portal is key-protected.</li>
             </ul>
         </div>
     """, unsafe_allow_html=True)
-
-    st.markdown("<p style='text-align: center; color: #6c757d; font-size: 12px; margin-top: 20px;'>© 2026 | Manaswi | Secure Fin-Audit Tools</p>", unsafe_allow_html=True)
