@@ -2,33 +2,43 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 from io import BytesIO
+import os
 
-# --- PROFESSIONAL THEMING ---
-st.set_page_config(page_title="BankStat to Excel", layout="wide")
+# --- PROFESSIONAL THEME SETUP ---
+st.set_page_config(page_title="BankStat to Excel", layout="centered", page_icon="🏦")
 
-# Custom CSS for Blue & White Professional Look
+# Enhanced CSS to force visibility of Disclaimer and Security sections
 st.markdown("""
     <style>
-    .main {
-        background-color: #FFFFFF;
+    .stApp {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #f8f9fa !important;
+        border-right: 1px solid #dee2e6;
     }
     .stButton>button {
-        background-color: #004a99;
-        color: white;
-        border-radius: 5px;
-        border: none;
-        padding: 10px 24px;
+        background-color: #0056b3 !important;
+        color: white !important;
+        border-radius: 8px;
+        font-weight: bold;
+        width: 100%;
     }
-    .stButton>button:hover {
-        background-color: #003366;
-        color: white;
+    .main-header {
+        color: #0056b3;
+        font-size: 32px;
+        font-weight: 700;
+        text-align: center;
     }
-    h1, h2, h3 {
-        color: #004a99;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    .stSidebar {
-        background-color: #f0f2f6;
+    /* Disclaimer Box Styling */
+    .disclaimer-box {
+        background-color: #fff9db;
+        border: 1px solid #f59f00;
+        padding: 15px;
+        border-radius: 8px;
+        color: #333333;
+        margin-top: 30px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -38,15 +48,16 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 def login():
-    # Header with "Logo" text
-    st.markdown("<h1 style='text-align: center;'>🏦 BankStat <span style='color: #333;'>to Excel</span></h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #666;'>Secure Financial Data Transformation</p>", unsafe_allow_html=True)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=120)
+    
+    st.markdown("<p class='main-header'>BankStat to Excel</p>", unsafe_allow_html=True)
+    st.write("<p style='text-align: center; color: #6c757d;'>Secure Professional Converter</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        st.write("---")
-        pwd = st.text_input("Enter Access Key:", type="password")
-        if st.button("Access Portal"):
+        pwd = st.text_input("Access Key", type="password")
+        if st.button("Login"):
             if pwd == "BankFree2026":
                 st.session_state["authenticated"] = True
                 st.rerun()
@@ -56,66 +67,71 @@ def login():
 if not st.session_state["authenticated"]:
     login()
 else:
-    # --- MAIN INTERFACE ---
-    # Top Logo Bar
-    st.markdown("<h2 style='margin-bottom: 0;'>🏦 BankStat to Excel</h2>", unsafe_allow_html=True)
-    st.write("Professional Audit & Reconciliation Utility")
+    # --- AUTHENTICATED INTERFACE ---
+    col_logo, col_text = st.columns([1, 4])
+    with col_logo:
+        if os.path.exists("logo.png"):
+            st.image("logo.png", width=80)
+        else:
+            st.title("🏦")
+    with col_text:
+        st.markdown("<h2 style='color: #0056b3; margin-top: 10px;'>Professional Portal</h2>", unsafe_allow_html=True)
+
     st.markdown("---")
 
     with st.sidebar:
-        st.title("Settings")
-        pdf_pass = st.text_input("Encrypted PDF Password:", type="password", help="Most bank PDFs are locked. Enter the password here.")
-        clean_mode = st.toggle("Smart Cleaning (Recommended)", value=True)
-        st.write("---")
-        st.write("Need help? Contact Support.")
+        st.header("Settings")
+        pdf_pass = st.text_input("PDF Password (if any)", type="password")
+        st.divider()
+        st.markdown("**Developer Contact:**")
+        st.write("For support, contact your Administrator.")
 
-    uploaded_file = st.file_uploader("Upload Bank Statement (PDF)", type="pdf")
+    uploaded_file = st.file_uploader("Upload Bank Statement (Digital PDF)", type="pdf")
 
     if uploaded_file:
         try:
             with pdfplumber.open(uploaded_file, password=pdf_pass) as pdf:
                 all_rows = []
-                with st.status("Processing Securely...", expanded=True) as status:
-                    for i, page in enumerate(pdf.pages):
-                        st.write(f"Analyzing Page {i+1}...")
+                with st.spinner('Converting...'):
+                    for page in pdf.pages:
                         table = page.extract_table()
                         if table:
                             df_page = pd.DataFrame(table)
                             all_rows.append(df_page)
-                    status.update(label="Conversion Complete!", state="complete", expanded=False)
 
                 if all_rows:
                     final_df = pd.concat(all_rows, ignore_index=True)
+                    final_df.columns = final_df.iloc[0]
+                    final_df = final_df[1:].dropna(how='all')
 
-                    if clean_mode:
-                        final_df = final_df.dropna(how='all', axis=0).dropna(how='all', axis=1)
-                        final_df.columns = final_df.iloc[0]
-                        final_df = final_df[1:]
-                        header_val = final_df.columns[0]
-                        final_df = final_df[final_df.iloc[:, 0] != header_val]
-
-                    st.subheader("📊 Data Preview")
+                    st.subheader("Data Preview")
                     st.dataframe(final_df, use_container_width=True)
 
-                    # Export to Excel
                     output = BytesIO()
                     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        final_df.to_excel(writer, index=False, sheet_name='Sheet1')
+                        final_df.to_excel(writer, index=False)
                     
                     st.download_button(
-                        label="📥 Download Excel (.xlsx)",
+                        label="📥 Download Excel File",
                         data=output.getvalue(),
-                        file_name="Bank_Statement_Export.xlsx",
+                        file_name="Bank_Statement_Converted.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
         except Exception as e:
-            st.error(f"Error: {e}. Please verify your PDF password.")
+            st.error("Error: Verification failed. Check password or file format.")
 
-    # --- PRIVACY FOOTER ---
+    # --- DISCLAIMER AND OWNER SECURITY SECTION ---
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("---")
-    colA, colB = st.columns(2)
-    with colA:
-        st.caption("🔒 **Security:** SSL Encrypted & Session-Only processing.")
-    with colB:
-        st.caption("💻 **Build:** v2.0 - Optimized for CA Professionals.")
+    st.markdown("""
+        <div class='disclaimer-box'>
+            <strong>⚖️ Disclaimer & Security Notice</strong><br>
+            <ul>
+                <li><strong>Privacy:</strong> This tool is built by <strong>Manaswi</strong> for CA professionals. We do not store, log, or share your financial data.</li>
+                <li><strong>Encryption:</strong> All files are processed in-memory. Once the session is closed, all data is permanently wiped.</li>
+                <li><strong>Accuracy:</strong> While we aim for 100% accuracy, users are advised to cross-verify the Excel output with the original statement.</li>
+                <li><strong>Owner Security:</strong> This portal is protected by access keys to prevent unauthorized usage.</li>
+            </ul>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<p style='text-align: center; color: #6c757d; font-size: 12px; margin-top: 20px;'>© 2026 | Manaswi | Secure Fin-Audit Tools</p>", unsafe_allow_html=True)
