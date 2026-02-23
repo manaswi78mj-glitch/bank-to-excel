@@ -80,4 +80,12 @@ st.caption("""
 - **Session Based:** All processing happens in temporary memory and is deleted as soon as you close this tab.
 - **Open Source:** This tool is built using transparent Python libraries to ensure financial data remains private.
 """)
+# --- This part goes at the very end of app.py ---
+st.markdown("---")
+st.caption("🔒 **Owner & Privacy Commitment:**")
+st.caption("""
+- This tool was created to provide a safe, private alternative to public converters.
+- **Your data stays yours:** No files are saved on GitHub or Streamlit servers.
+- **Security:** The app uses HTTPS encryption and session-only processing.
+""")
 
