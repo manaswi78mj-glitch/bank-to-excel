@@ -72,3 +72,12 @@ else:
                     )
         except Exception as e:
             st.error(f"Error: {e}. If the PDF is locked, enter the password in the sidebar.")
+            # --- Privacy & Safety Footer ---
+st.markdown("---")
+st.caption("🔒 **Privacy & Security Notice:**")
+st.caption("""
+- **Zero Storage:** We do not store your PDF files, passwords, or extracted data on any server.
+- **Session Based:** All processing happens in temporary memory and is deleted as soon as you close this tab.
+- **Open Source:** This tool is built using transparent Python libraries to ensure financial data remains private.
+""")
+
